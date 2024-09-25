@@ -62,19 +62,21 @@ model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accur
 model.summary()
 
 # Train the model
-model.fit(train_images, train_labels_categorical, epochs=20,  validation_data=(val_images, val_labels_categorical), batch_size=32)
+model.fit(train_images, train_labels_categorical, epochs=40, validation_data=(val_images, val_labels_categorical), batch_size=32)
 
 # Function to preprocess the image
-def preprocess_image(image, image_size, interpolation=cv2.INTER_CUBIC):
+def preprocess_image(image, image_size, interpolation=cv2.INTER_AREA):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # Resize to the same size as the training images
     resized = cv2.resize(gray, (image_size, image_size), interpolation=interpolation)
+    resized = resized.reshape(1, image_size, image_size, 1)
+    resized = resized / 255.0
+    
+
     # Normalize the pixel values
-    normalized = resized / 255.0
     # Reshape to match the input shape of the model
-    reshaped = normalized.reshape(1, image_size, image_size, 1)
-    return reshaped, resized
+    return resized
 
 # Initialize MediaPipe hands
 mp_hands = mp.solutions.hands
@@ -82,14 +84,13 @@ hands = mp_hands.Hands()
 
 # Function to detect hand and predict the ASL letter
 def capture_and_predict(model, categories, image_size):
-# Capture an image from the webcam
+    # Capture an image from the webcam
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         return
 
-    print("Press 's' to capture an image. Press 'q' to quit.")
-    
+    print("Press 's' to capture an image.")
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -99,10 +100,10 @@ def capture_and_predict(model, categories, image_size):
         # Flip the frame to avoid mirror effect
         frame = cv2.flip(frame, 1)
 
-        # Convert the BGR image to RGB for hand detection
+        # Convert the BGR image to RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Detect hands using your hand detection logic (assuming `hands` is the hand detection model)
+        # Detect hands
         results = hands.process(frame_rgb)
 
         # Check if any hand is detected
@@ -124,43 +125,30 @@ def capture_and_predict(model, categories, image_size):
                 # Draw bounding box around the hand
                 cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
-                # Show the frame with bounding box
-                cv2.imshow('Hand Detection and Prediction', frame)
+                # Crop the hand region
+                hand_region = frame[y_min:y_max, x_min:x_max]
 
-                # Wait for the user to press 's' to capture the image
-                if cv2.waitKey(1) & 0xFF == ord('s'):
-                    # Crop the hand region
-                    hand_region = frame[y_min:y_max, x_min:x_max]
+                # Preprocess the cropped hand image
+                preprocessed_image = preprocess_image(hand_region, image_size)
 
-                    # Preprocess the cropped hand image
-                    preprocessed_image, resized_image = preprocess_image(hand_region, image_size)
+                # Predict the label for the cropped hand image
+                prediction = model.predict(preprocessed_image)
+                predicted_label = np.argmax(prediction, axis=1)[0]
+                predicted_category = categories[predicted_label]
 
-                    # Predict the label for the cropped hand image
-                    prediction = model.predict(preprocessed_image)
-                    predicted_label = np.argmax(prediction, axis=1)[0]
-                    predicted_category = categories[predicted_label]
+                # Display the prediction on the frame
+                cv2.putText(frame, f"Predicted: {predicted_category}", (x_min, y_min - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-                    # Display the original and preprocessed images
-                    plt.figure(figsize=(10, 5))
-                    plt.subplot(1, 2, 1)
-                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                    plt.title("Original Image")
-                    plt.axis('off')
+        # Show the frame with hand detection and prediction
+        cv2.imshow('Hand Detection and Prediction', frame)
 
-                    plt.subplot(1, 2, 2)
-                    plt.imshow(resized_image, cmap='gray')
-                    plt.title(f"Preprocessed Image\nPredicted: {predicted_category}")
-                    plt.axis('off')
-
-                    plt.show()
-
-        # Press 'q' to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Wait for the user to press 's' to stop capturing
+        if cv2.waitKey(1) & 0xFF == ord('s'):
             break
 
     # Release the webcam and close the window
     cap.release()
     cv2.destroyAllWindows()
-
 # Capture an image and predict its label
 capture_and_predict(model, class_names, image_size)
