@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, MaxPoolin
 import matplotlib.pyplot as plt
 import cv2
 import mediapipe as mp
-
+import numpy as np
 # Load the dataset from the saved .npz file
 data = np.load('asl_dataset.npz')
 
@@ -55,28 +55,38 @@ model = Sequential([
           kernel_initializer='glorot_uniform', bias_initializer='zeros')
 ])
 
+
+
 # Compile the model
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
 
 # Print the model summary
 model.summary()
 
 # Train the model
-model.fit(train_images, train_labels_categorical, epochs=40, validation_data=(val_images, val_labels_categorical), batch_size=32)
+model.fit(train_images, train_labels_categorical, epochs=20, validation_data=(val_images, val_labels_categorical), batch_size=32)
 
 # Function to preprocess the image
 def preprocess_image(image, image_size, interpolation=cv2.INTER_AREA):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # Resize to the same size as the training images
-    resized = cv2.resize(gray, (image_size, image_size), interpolation=interpolation)
-    resized = resized.reshape(1, image_size, image_size, 1)
-    resized = resized / 255.0
-    
+    resized = cv2.resize(gray, (image_size, image_size))
 
+    # Apply Gaussian blur
+    blurred = cv2.GaussianBlur(resized, (11, 11), 0)
+    # Apply thresholding
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # Invert the thresholded image
+    thresh = cv2.bitwise_not(thresh)
     # Normalize the pixel values
+    normalized = thresh / 255.0
     # Reshape to match the input shape of the model
-    return resized
+    reshaped = normalized.reshape(1, image_size, image_size, 1)
+    return reshaped, thresh
 
 # Initialize MediaPipe hands
 mp_hands = mp.solutions.hands
@@ -129,7 +139,10 @@ def capture_and_predict(model, categories, image_size):
                 hand_region = frame[y_min:y_max, x_min:x_max]
 
                 # Preprocess the cropped hand image
-                preprocessed_image = preprocess_image(hand_region, image_size)
+                preprocessed_image, thresh_image = preprocess_image(hand_region, image_size)
+
+                # Debugging prints for shape
+                print(f"Preprocessed image shape: {preprocessed_image.shape}")
 
                 # Predict the label for the cropped hand image
                 prediction = model.predict(preprocessed_image)
@@ -139,6 +152,9 @@ def capture_and_predict(model, categories, image_size):
                 # Display the prediction on the frame
                 cv2.putText(frame, f"Predicted: {predicted_category}", (x_min, y_min - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+                # Display the preprocessed hand region
+                cv2.imshow('Preprocessed Hand Region', thresh_image)
 
         # Show the frame with hand detection and prediction
         cv2.imshow('Hand Detection and Prediction', frame)
@@ -150,5 +166,6 @@ def capture_and_predict(model, categories, image_size):
     # Release the webcam and close the window
     cap.release()
     cv2.destroyAllWindows()
+
 # Capture an image and predict its label
 capture_and_predict(model, class_names, image_size)
