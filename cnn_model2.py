@@ -39,22 +39,20 @@ test_labels_categorical = to_categorical(test_labels, num_classes)
 image_size = train_images.shape[1]
 
 # Define the CNN model
-model = Sequential([
-    Input(shape=(image_size, image_size, 1)),  # Assuming grayscale images
-    Conv2D(64, (7, 7), strides=(2, 2), activation='relu', padding='same', 
-           kernel_initializer='he_normal', bias_initializer='zeros'),
-    BatchNormalization(),
-    MaxPooling2D(pool_size=(3, 3), strides=2),
-    Dropout(0.2),
-    Conv2D(64, (3, 3), strides=(2, 2), activation='relu', padding='same', 
-           kernel_initializer='he_normal', bias_initializer='zeros'),
-    BatchNormalization(),
-    MaxPooling2D(pool_size=(2, 2), strides=2),
-    GlobalAveragePooling2D(),
-    Dense(num_classes, activation='softmax', name='Softmax',
-          kernel_initializer='glorot_uniform', bias_initializer='zeros')
-])
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)),
+    layers.MaxPooling2D((2, 2)),
 
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(num_classes, activation='softmax')
+])
 
 
 # Compile the model
@@ -75,18 +73,12 @@ def preprocess_image(image, image_size, interpolation=cv2.INTER_AREA):
     # Resize to the same size as the training images
     resized = cv2.resize(gray, (image_size, image_size))
 
-    # Apply Gaussian blur
-    blurred = cv2.GaussianBlur(resized, (11, 11), 0)
-    # Apply thresholding
-    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     
-    # Invert the thresholded image
-    thresh = cv2.bitwise_not(thresh)
     # Normalize the pixel values
-    normalized = thresh / 255.0
+    normalized = resized / 255.0
     # Reshape to match the input shape of the model
     reshaped = normalized.reshape(1, image_size, image_size, 1)
-    return reshaped, thresh
+    return reshaped, normalized
 
 # Initialize MediaPipe hands
 mp_hands = mp.solutions.hands

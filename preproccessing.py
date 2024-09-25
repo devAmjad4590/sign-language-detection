@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
-directory_path = 'asl_dataset/asl_dataset/'
+directory_path = 'asl_dataset/'
 
 # Parameters
 img_size = 64
@@ -23,11 +23,6 @@ def load_images_from_directory(directory_path, img_size):
             img = cv2.imread(img_path)  # Load image using OpenCV
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
             img = cv2.resize(img, (img_size, img_size))  # Resize image
-            # Apply Gaussian blur
-            img = cv2.GaussianBlur(img, (3, 3), 0)
-            # Apply median blur
-            # Apply thresholding
-            _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img = img.astype('float32') / 255.0  # Normalize image
             images.append(img)
             labels.append(label)  # Append corresponding label
