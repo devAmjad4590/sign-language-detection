@@ -1,68 +1,67 @@
 import numpy as np
-import pandas as pd
 from keras.utils import to_categorical
-from sklearn.model_selection import train_test_split
 from tensorflow.keras import models, layers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense
 import matplotlib.pyplot as plt
-import cv2 
+import cv2
 
-# Load the data
-train_data = pd.read_csv('sign_mnist_train.csv')
-test_data = pd.read_csv('sign_mnist_test.csv')
+# Load the dataset from the saved .npz file
+data = np.load('asl_dataset.npz')
 
-# Extract labels and pixels
-labels = train_data['label'].values
-pixels = train_data.drop('label', axis=1).values
+# Extract the training, validation, and test datasets
+train_images = data['train_images']
+train_labels = data['train_labels']
+val_images = data['val_images']
+val_labels = data['val_labels']
+test_images = data['test_images']
+test_labels = data['test_labels']
+class_names = data['class_names']
 
-# Define the image size
-image_size = 28
-
-# Reshape the pixels array
-pixels = pixels.reshape(-1, image_size, image_size, 1)
+print("Dataset loaded successfully!")
+print(f"Training set size: {train_images.shape}")
+print(f"Validation set size: {val_images.shape}")
+print(f"Test set size: {test_images.shape}")
 
 # Normalize the pixel values
-pixels = pixels / 255.0
-
-# Define the categories excluding J and Z
-categories = [chr(i) for i in range(ord('A'), ord('Z') + 1) if i not in [ord('J'), ord('Z')]]
-
-# Create a mapping from original label values to new indices
-original_labels = [i for i in range(26) if i not in [9, 25]]  # 9 corresponds to J, 25 corresponds to Z
-original_to_new_label_mapping = {original: new for new, original in enumerate(original_labels)}
-
-# Remap the labels to the new range
-remapped_labels = np.array([original_to_new_label_mapping[label] for label in labels])
+train_images = train_images / 255.0
+val_images = val_images / 255.0
+test_images = test_images / 255.0
 
 # Convert labels to categorical (one-hot encoding)
-num_classes = len(categories)
-labels_categorical = to_categorical(remapped_labels, num_classes)
+num_classes = len(class_names)
+train_labels_categorical = to_categorical(train_labels, num_classes)
+val_labels_categorical = to_categorical(val_labels, num_classes)
+test_labels_categorical = to_categorical(test_labels, num_classes)
 
-# Split the data into training and testing sets
-X_train, X_test, Y_train, Y_test = train_test_split(pixels, labels_categorical, test_size=0.2, random_state=42)
+# Define the image size
+image_size = train_images.shape[1]
 
 # Define the CNN model
-model = models.Sequential([
-    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Conv2D(128, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Flatten(),
-    layers.Dense(128, activation='relu'),
-    layers.Dense(num_classes, activation='softmax')
+model = Sequential([
+    Input(shape=(image_size, image_size, 1)),  # Assuming grayscale images
+    Conv2D(64, (7, 7), strides=(2, 2), activation='relu', padding='same', 
+           kernel_initializer='he_normal', bias_initializer='zeros'),
+    BatchNormalization(),
+    MaxPooling2D(pool_size=(3, 3), strides=2),
+    Dropout(0.2),
+    Conv2D(64, (3, 3), strides=(2, 2), activation='relu', padding='same', 
+           kernel_initializer='he_normal', bias_initializer='zeros'),
+    BatchNormalization(),
+    MaxPooling2D(pool_size=(2, 2), strides=2),
+    GlobalAveragePooling2D(),
+    Dense(num_classes, activation='softmax', name='Softmax',
+          kernel_initializer='glorot_uniform', bias_initializer='zeros')
 ])
 
 # Compile the model
-model.compile(optimizer='adam', 
-              loss='categorical_crossentropy', 
-              metrics=['accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Print the model summary
+model.summary()
 
 # Train the model
-model.fit(X_train, Y_train, epochs=5, validation_data=(X_test, Y_test), batch_size=32)
+model.fit(train_images, train_labels_categorical, epochs=20,  validation_data=(val_images, val_labels_categorical), batch_size=32)
 
 # Function to preprocess the image
 def preprocess_image(image, image_size, interpolation=cv2.INTER_CUBIC):
@@ -124,4 +123,4 @@ def capture_and_predict(model, categories, image_size):
     cv2.destroyAllWindows()
 
 # Capture an image and predict its label
-capture_and_predict(model, categories, image_size)
+capture_and_predict(model, class_names, image_size)
