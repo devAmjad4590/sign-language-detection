@@ -16,7 +16,9 @@ def preprocess_image(image):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
     # Resize to 28x28 to match the input size of the CNN model
+    
     resized = cv2.resize(gray, (28, 28))
     
     # Normalize the pixel values (0-255) to (0-1)
@@ -25,7 +27,7 @@ def preprocess_image(image):
     # Reshape to (1, 28, 28, 1) for the CNN input
     reshaped = np.reshape(normalized, (1, 28, 28, 1))
     
-    return reshaped
+    return reshaped, gray
 
 # Define a function to map prediction index to ASL letter
 def predict_asl_letter(prediction):
@@ -50,11 +52,6 @@ while cap.isOpened():
         for hand_landmarks in result.multi_hand_landmarks:
             # Get bounding box coordinates around the hand
             h, w, c = frame.shape
-            hand_box = mp_drawing._normalized_to_pixel_coordinates(hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].x,
-                                                                   hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].y, 
-                                                                   w, h)
-            
-            # Get the coordinates of the bounding box
             x_min, y_min = w, h
             x_max, y_max = 0, 0
             for landmark in hand_landmarks.landmark:
@@ -63,7 +60,7 @@ while cap.isOpened():
                 x_max, y_max = max(x_max, x), max(y_max, y)
 
             # Add a margin to the bounding box to ensure the whole hand is captured
-            margin = 20
+            margin = 40
             x_min = max(0, x_min - margin)
             y_min = max(0, y_min - margin)
             x_max = min(w, x_max + margin)
@@ -73,11 +70,12 @@ while cap.isOpened():
             hand_image = frame[y_min:y_max, x_min:x_max]
 
             # Preprocess the cropped hand image
-            preprocessed_image = preprocess_image(hand_image)
+            preprocessed_image, resized_image = preprocess_image(hand_image)
 
             # Make prediction using the trained model
             prediction = model.predict(preprocessed_image)
             predicted_label = np.argmax(prediction)
+            confidence = np.max(prediction) * 100  # Get the confidence score
 
             # Convert the predicted label to the corresponding ASL letter
             asl_letter = predict_asl_letter(predicted_label)
@@ -85,9 +83,12 @@ while cap.isOpened():
             # Draw the bounding box around the hand
             cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
-            # Display the predicted ASL letter on the frame
-            cv2.putText(frame, f'ASL Letter: {asl_letter}', (x_min, y_min - 10),
+            # Display the predicted ASL letter and confidence on the frame
+            cv2.putText(frame, f'ASL Letter: {asl_letter} ({confidence:.2f}%)', (x_min, y_min - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+            # Display the preprocessed image in a separate window
+            cv2.imshow('Preprocessed Image', resized_image)
 
     # Show the frame
     cv2.imshow('ASL Recognition', frame)

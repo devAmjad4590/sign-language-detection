@@ -27,6 +27,18 @@ testset = test_df.drop(['label'], axis=1)
 X_train = trainset.values.reshape(-1, 28, 28, 1)
 X_test = testset.values.reshape(-1, 28, 28, 1)
 
+# Plot the first 10 images from the dataset
+fig, axes = plt.subplots(2, 5, figsize=(15, 6))
+axes = axes.ravel()
+
+for i in range(10):
+    axes[i].imshow(X_train[i].reshape(28, 28), cmap='gray')
+    axes[i].set_title(f'Label: {train_label[i]}')
+    axes[i].axis('off')
+
+plt.tight_layout()
+plt.show()
+
 # **Convert Labels to Binary Format**
 lb = LabelBinarizer()
 y_train = lb.fit_transform(train_label)
@@ -35,9 +47,9 @@ y_test = lb.fit_transform(test_label)
 # **Image Augmentation and Normalization**
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    height_shift_range=0.2,
-    width_shift_range=0.2,
-    zoom_range=0.2,
+    height_shift_range=0.05,
+    width_shift_range=0.05,
+    zoom_range=0.05,
     horizontal_flip=True,
     fill_mode='nearest'
 )
