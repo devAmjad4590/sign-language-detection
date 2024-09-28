@@ -32,6 +32,20 @@ test_labels_categorical = to_categorical(test_labels, num_classes)
 # Define the image size
 image_size = train_images.shape[1]
 
+# Data augmentation
+train_datagen = ImageDataGenerator(
+    rotation_range=10,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    shear_range=0.1,
+    zoom_range=0.1,
+    horizontal_flip=True,
+)
+val_datagen = ImageDataGenerator()
+
+train_generator = train_datagen.flow(train_images, train_labels_categorical, batch_size=32)
+val_generator = val_datagen.flow(val_images, val_labels_categorical, batch_size=32)
+
 # Define the CNN model
 model = Sequential()
 model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)))
@@ -50,7 +64,7 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 model.summary()
 
 # Train the model
-history = model.fit(train_images, train_labels_categorical, epochs=20, validation_data=(val_images, val_labels_categorical))
+history = model.fit(train_generator, epochs=20, validation_data=val_generator)
 
 # Evaluate the model on the test data
 loss, acc = model.evaluate(test_images, test_labels_categorical, verbose=0)
@@ -58,8 +72,8 @@ print('The accuracy of the model for test data is:', acc * 100)
 print('The Loss of the model for test data is:', loss)
 
 # Save the model
-model.save('asl_cnn_model_simple.h5')
-print('Model saved as asl_cnn_model_simple.h5')
+model.save('asl_cnn_model_augmented.h5')
+print('Model saved as asl_cnn_model_augmented.h5')
 
 # Plot training & validation accuracy values
 plt.figure(figsize=(12, 4))

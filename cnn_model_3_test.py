@@ -7,7 +7,7 @@ from keras.models import load_model
 image_size = 32
 
 # Load the trained ASL model
-model = load_model('asl_cnn_model_simple.h5')
+model = load_model('asl_cnn_model_augmented.h5')
 
 # Initialize MediaPipe Hand Detector
 mp_hands = mp.solutions.hands
@@ -20,8 +20,11 @@ def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    # Apply thresholding
+    _, thresholded = cv2.threshold(gray, 161, 255, cv2.THRESH_BINARY)
+    
     # Resize to match the input size of the CNN model
-    resized = cv2.resize(gray, (image_size, image_size))
+    resized = cv2.resize(thresholded, (image_size, image_size))
     
     # Normalize the pixel values (0-255) to (0-1)
     normalized = resized / 255.0
@@ -29,7 +32,7 @@ def preprocess_image(image):
     # Reshape to (1, image_size, image_size, 1) for the CNN input
     reshaped = np.reshape(normalized, (1, image_size, image_size, 1))
     
-    return reshaped, gray
+    return reshaped, resized
 
 # Define a function to map prediction index to ASL letter
 def predict_asl_letter(prediction):
