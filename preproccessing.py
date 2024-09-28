@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 directory_path = 'asl_dataset/'
 
 # Parameters
-img_size = 64
+img_size = 32
 validation_split = 0.2
 test_split = 0.1
 
@@ -23,6 +23,7 @@ def load_images_from_directory(directory_path, img_size):
             img = cv2.imread(img_path)  # Load image using OpenCV
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
             img = cv2.resize(img, (img_size, img_size))  # Resize image
+            img = cv2.flip(img, 1)  # Flip image horizontally (mirror-wise)
             img = img.astype('float32') / 255.0  # Normalize image
             images.append(img)
             labels.append(label)  # Append corresponding label

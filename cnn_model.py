@@ -1,127 +1,83 @@
 import numpy as np
-import pandas as pd
-from keras.utils import to_categorical
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import models, layers
 import matplotlib.pyplot as plt
-import cv2 
+from keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
-# Load the data
-train_data = pd.read_csv('sign_mnist_train.csv')
-test_data = pd.read_csv('sign_mnist_test.csv')
+# Load the dataset from the saved .npz file
+data = np.load('asl_dataset.npz')
 
-# Extract labels and pixels
-labels = train_data['label'].values
-pixels = train_data.drop('label', axis=1).values
+# Extract the training, validation, and test datasets
+train_images = data['train_images']
+train_labels = data['train_labels']
+val_images = data['val_images']
+val_labels = data['val_labels']
+test_images = data['test_images']
+test_labels = data['test_labels']
+class_names = data['class_names']
 
-# Define the image size
-image_size = 28
-
-# Reshape the pixels array
-pixels = pixels.reshape(-1, image_size, image_size, 1)
-
-# Normalize the pixel values
-pixels = pixels / 255.0
-
-# Define the categories excluding J and Z
-categories = [chr(i) for i in range(ord('A'), ord('Z') + 1) if i not in [ord('J'), ord('Z')]]
-
-# Create a mapping from original label values to new indices
-original_labels = [i for i in range(26) if i not in [9, 25]]  # 9 corresponds to J, 25 corresponds to Z
-original_to_new_label_mapping = {original: new for new, original in enumerate(original_labels)}
-
-# Remap the labels to the new range
-remapped_labels = np.array([original_to_new_label_mapping[label] for label in labels])
+print("Dataset loaded successfully!")
+print(f"Training set size: {train_images.shape}")
+print(f"Validation set size: {val_images.shape}")
+print(f"Test set size: {test_images.shape}")
 
 # Convert labels to categorical (one-hot encoding)
-num_classes = len(categories)
-labels_categorical = to_categorical(remapped_labels, num_classes)
+num_classes = len(class_names)
+train_labels_categorical = to_categorical(train_labels, num_classes)
+val_labels_categorical = to_categorical(val_labels, num_classes)
+test_labels_categorical = to_categorical(test_labels, num_classes)
 
-# Split the data into training and testing sets
-X_train, X_test, Y_train, Y_test = train_test_split(pixels, labels_categorical, test_size=0.2, random_state=42)
+# Define the image size
+image_size = train_images.shape[1]
 
 # Define the CNN model
-model = models.Sequential([
-    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Conv2D(128, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-
-    layers.Flatten(),
-    layers.Dense(128, activation='relu'),
-    layers.Dense(num_classes, activation='softmax')
-])
+model = Sequential()
+model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)))
+model.add(MaxPooling2D((2, 2)))
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D((2, 2)))
+model.add(Flatten())
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(num_classes, activation='softmax'))
 
 # Compile the model
-model.compile(optimizer='adam', 
-              loss='categorical_crossentropy', 
-              metrics=['accuracy'])
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Print the model summary
+model.summary()
 
 # Train the model
-model.fit(X_train, Y_train, epochs=5, validation_data=(X_test, Y_test), batch_size=32)
+history = model.fit(train_images, train_labels_categorical, epochs=20, validation_data=(val_images, val_labels_categorical))
 
-# Function to preprocess the image
-def preprocess_image(image, image_size, interpolation=cv2.INTER_CUBIC):
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # Resize to the same size as the training images
-    resized = cv2.resize(gray, (image_size, image_size), interpolation=interpolation)
-    # Normalize the pixel values
-    normalized = resized / 255.0
-    # Reshape to match the input shape of the model
-    reshaped = normalized.reshape(1, image_size, image_size, 1)
-    return reshaped, resized
+# Evaluate the model on the test data
+loss, acc = model.evaluate(test_images, test_labels_categorical, verbose=0)
+print('The accuracy of the model for test data is:', acc * 100)
+print('The Loss of the model for test data is:', loss)
 
-# Function to capture an image using OpenCV and predict its label
-def capture_and_predict(model, categories, image_size):
-    # Capture an image from the webcam
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("Error: Could not open webcam.")
-        return
+# Save the model
+model.save('asl_cnn_model_simple.h5')
+print('Model saved as asl_cnn_model_simple.h5')
 
-    print("Press 's' to capture an image.")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame.")
-            break
+# Plot training & validation accuracy values
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
 
-        # Display the frame
-        cv2.imshow('Webcam', frame)
+# Plot training & validation loss values
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
 
-        # Wait for the user to press 's' to capture the image
-        if cv2.waitKey(1) & 0xFF == ord('s'):
-            # Preprocess the captured image
-            preprocessed_image, resized_image = preprocess_image(frame, image_size, interpolation=cv2.INTER_CUBIC)
-            # Predict the label
-            prediction = model.predict(preprocessed_image)
-            predicted_label = np.argmax(prediction, axis=1)[0]
-            predicted_category = categories[predicted_label]
-
-            # Display the original and preprocessed images
-            plt.figure(figsize=(10, 5))
-            plt.subplot(1, 2, 1)
-            plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            plt.title("Original Image")
-            plt.axis('off')
-
-            plt.subplot(1, 2, 2)
-            plt.imshow(resized_image, cmap='gray')
-            plt.title(f"Preprocessed Image\nPredicted: {predicted_category}")
-            plt.axis('off')
-
-            plt.show()
-
-            break
-
-    # Release the webcam and close the window
-    cap.release()
-    cv2.destroyAllWindows()
-
-# Capture an image and predict its label
-capture_and_predict(model, categories, image_size)
+plt.show()

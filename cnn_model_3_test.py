@@ -3,8 +3,11 @@ import numpy as np
 import mediapipe as mp
 from keras.models import load_model
 
+# Define the image size
+image_size = 32
+
 # Load the trained ASL model
-model = load_model('asl_cnn_model.h5')
+model = load_model('asl_cnn_model_simple.h5')
 
 # Initialize MediaPipe Hand Detector
 mp_hands = mp.solutions.hands
@@ -17,15 +20,14 @@ def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
-    # Resize to 28x28 to match the input size of the CNN model
-    
-    resized = cv2.resize(gray, (28, 28))
+    # Resize to match the input size of the CNN model
+    resized = cv2.resize(gray, (image_size, image_size))
     
     # Normalize the pixel values (0-255) to (0-1)
     normalized = resized / 255.0
     
-    # Reshape to (1, 28, 28, 1) for the CNN input
-    reshaped = np.reshape(normalized, (1, 28, 28, 1))
+    # Reshape to (1, image_size, image_size, 1) for the CNN input
+    reshaped = np.reshape(normalized, (1, image_size, image_size, 1))
     
     return reshaped, gray
 
@@ -60,7 +62,7 @@ while cap.isOpened():
                 x_max, y_max = max(x_max, x), max(y_max, y)
 
             # Add a margin to the bounding box to ensure the whole hand is captured
-            margin = 40
+            margin = 30
             x_min = max(0, x_min - margin)
             y_min = max(0, y_min - margin)
             x_max = min(w, x_max + margin)
