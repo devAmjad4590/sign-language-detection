@@ -27,6 +27,28 @@ def capture_images_for_letter(letter, num_images=200):
         print("Error: Could not open webcam.")
         return
 
+    print(f"Press any key to start capturing images for letter: {letter}")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Could not read frame.")
+            break
+
+        # Flip the frame to avoid mirror effect
+        frame = cv2.flip(frame, 1)
+
+        # Display the instruction label on the frame
+        cv2.putText(frame, "Press any key to start capturing images", (10, 30), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        # Show the frame
+        cv2.imshow('Hand Detection', frame)
+
+        # Break the loop if any key is pressed
+        if cv2.waitKey(1) & 0xFF != 255:
+            break
+
     print(f"Capturing images for letter: {letter}")
     count = 0
     while count < num_images:

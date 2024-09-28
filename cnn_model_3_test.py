@@ -7,7 +7,7 @@ from keras.models import load_model
 image_size = 32
 
 # Load the trained ASL model
-model = load_model('asl_cnn_model_augmented.h5')
+model = load_model('asl_cnn_model.h5')
 
 # Initialize MediaPipe Hand Detector
 mp_hands = mp.solutions.hands
@@ -18,6 +18,8 @@ mp_drawing = mp.solutions.drawing_utils
 def preprocess_image(image):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # flip the camera
+    gray = cv2.flip(gray, 1)
     
     gray = cv2.GaussianBlur(gray, (15, 15), 0)
     # Apply thresholding

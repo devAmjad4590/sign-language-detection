@@ -32,6 +32,7 @@ test_labels_categorical = to_categorical(test_labels, num_classes)
 # Define the image size
 image_size = train_images.shape[1]
 
+
 # Data augmentation
 train_datagen = ImageDataGenerator(
     rotation_range=10,
@@ -72,8 +73,8 @@ print('The accuracy of the model for test data is:', acc * 100)
 print('The Loss of the model for test data is:', loss)
 
 # Save the model
-model.save('asl_cnn_model_augmented.h5')
-print('Model saved as asl_cnn_model_augmented.h5')
+model.save('asl_cnn_model.h5')
+print('Model saved as asl_cnn_model.h5')
 
 # Plot training & validation accuracy values
 plt.figure(figsize=(12, 4))
