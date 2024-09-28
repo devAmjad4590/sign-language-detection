@@ -64,7 +64,7 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 model.summary()
 
 # Train the model
-history = model.fit(train_generator, epochs=20, validation_data=val_generator)
+history = model.fit(train_generator, epochs=35, validation_data=val_generator)
 
 # Evaluate the model on the test data
 loss, acc = model.evaluate(test_images, test_labels_categorical, verbose=0)

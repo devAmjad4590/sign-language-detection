@@ -22,9 +22,10 @@ def load_images_from_directory(directory_path, img_size):
             img_path = os.path.join(class_dir, img_name)
             img = cv2.imread(img_path)  # Load image using OpenCV
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
-            img = cv2.resize(img, (img_size, img_size))  # Resize image
+            img = cv2.GaussianBlur(img, (15, 15), 0)  # Apply Gaussian blur
             img = cv2.flip(img, 1)  # Flip image horizontally (mirror-wise)
             _, img = cv2.threshold(img, 161, 255, cv2.THRESH_BINARY)  # Apply thresholding
+            img = cv2.resize(img, (img_size, img_size))  # Resize image
             img = img.astype('float32') / 255.0  # Normalize image
             images.append(img)
             labels.append(label)  # Append corresponding label

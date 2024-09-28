@@ -19,7 +19,7 @@ def preprocess_image(image):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    gray = cv2.GaussianBlur(gray, (15, 15), 0)
     # Apply thresholding
     _, thresholded = cv2.threshold(gray, 161, 255, cv2.THRESH_BINARY)
     
@@ -32,7 +32,7 @@ def preprocess_image(image):
     # Reshape to (1, image_size, image_size, 1) for the CNN input
     reshaped = np.reshape(normalized, (1, image_size, image_size, 1))
     
-    return reshaped, resized
+    return reshaped, thresholded
 
 # Define a function to map prediction index to ASL letter
 def predict_asl_letter(prediction):
