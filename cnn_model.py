@@ -29,6 +29,7 @@ train_labels_categorical = to_categorical(train_labels, num_classes)
 val_labels_categorical = to_categorical(val_labels, num_classes)
 test_labels_categorical = to_categorical(test_labels, num_classes)
 
+
 # Define the image size
 image_size = train_images.shape[1]
 
