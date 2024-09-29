@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 import mediapipe as mp
 from keras.models import load_model
-
+import time
 # Define the image size
 image_size = 32
-
+previous_letter = None
 # Load the trained ASL model
 model = load_model('asl_cnn_model.h5')
 
@@ -43,6 +43,11 @@ def predict_asl_letter(prediction):
 
 # Start video capture
 cap = cv2.VideoCapture(0)
+
+# Initialize an empty string to store recognized text
+recognized_text = ""
+asl_letter = ""
+last_letter_time = 0
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -86,7 +91,7 @@ while cap.isOpened():
 
             # Convert the predicted label to the corresponding ASL letter
             asl_letter = predict_asl_letter(predicted_label)
-
+            
             # Draw the bounding box around the hand
             cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
@@ -100,10 +105,41 @@ while cap.isOpened():
     # Show the frame
     cv2.imshow('ASL Recognition', frame)
 
-    # Break the loop if 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Create a blank image for the recognized text
+    text_window = np.ones((200, 500, 3), dtype=np.uint8) * 255  # White background
+
+    # Display the recognized text in the new window
+    cv2.putText(text_window, 'Recognized Text:', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+    cv2.putText(text_window, recognized_text, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    
+    # Show the text window
+    cv2.imshow('Recognized Text', text_window)
+
+    # Check for key presses
+    key = cv2.waitKey(1) & 0xFF
+
+    # If 'q' is pressed, break the loop and exit
+    if key == ord('q'):
         break
 
+    current_time = time.time()
+
+    # Initialize the timing and letter tracking variables
+    if asl_letter != previous_letter:  # Check if the letter has changed
+        last_letter_time = time.time()  # Update the time when the letter changes
+        previous_letter = asl_letter  # Set the current letter as the previous one
+    else:
+        # If the letter hasn't changed, check how long it has stayed the same
+        if current_time - last_letter_time >= 5:
+            recognized_text += asl_letter  # Append the letter after 3 seconds
+            last_letter_time = time.time()
+            
+
+    if key == ord('c'):
+        recognized_text = ''
+
+    if key == ord('z'):
+        recognized_text += " "
 # Release the video capture and close windows
 cap.release()
 cv2.destroyAllWindows()
