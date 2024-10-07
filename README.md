@@ -2,6 +2,9 @@
 
 This project is a pipeline for recognizing American Sign Language (ASL) gestures. The steps include creating a dataset, preprocessing the images, training a Convolutional Neural Network (CNN) model, detecting hand signs, and evaluating the model's accuracy.
 
+## Project Overview
+![ASL Recognition Demo](gifs/demo.gif)
+
 ## Project Structure
 
 - `create_dataset.py`: A script for capturing images of hand gestures for each letter in the ASL alphabet.
