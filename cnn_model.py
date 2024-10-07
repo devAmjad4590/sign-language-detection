@@ -4,7 +4,6 @@ from keras.utils import to_categorical
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 # Load the dataset from the saved .npz file
 data = np.load('asl_dataset.npz')
@@ -52,8 +51,10 @@ val_generator = val_datagen.flow(val_images, val_labels_categorical, batch_size=
 model = Sequential()
 model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(image_size, image_size, 1)))
 model.add(MaxPooling2D((2, 2)))
+
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D((2, 2)))
+
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
